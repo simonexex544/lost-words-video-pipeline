@@ -67,6 +67,8 @@ Po dodaniu sekretu włącz przełącznik udostępniania go temu notebookowi. Nie
 
 Domyślne wartości to LLM_PROVIDER='openai_compatible', IMAGE_PROVIDER='fallback', TTS_PROVIDER='edge'. Bez klucza LLM pipeline użyje polskiego scenariusza demonstracyjnego. Fallback obrazów tworzy syntetyczne plansze Pillow do testowania montażu, a nie fotorealistyczne obrazy. Aby generować obrazy przez API, ustaw IMAGE_PROVIDER='openai' i skonfiguruj sekret.
 
+**Uwaga o własnych tematach:** EPISODE_TOPIC i EPISODE_LOCATION są przekazywane do generatora scenariusza, gdy dostępny jest OPENAI_API_KEY. Bez klucza działa stały scenariusz demonstracyjny o pociągu; aby testować inny motyw bez API, zmień również treść funkcji fallback_story w komórce 3.
+
 - Film: MyDrive/lost_words_project/output/
 - Scenariusze JSON: MyDrive/lost_words_project/assets/
 - Audio segmentów: MyDrive/lost_words_project/audio/

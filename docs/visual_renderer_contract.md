@@ -18,7 +18,7 @@ This is the stable interface between the Colab notebook owner and the visual ani
 - Preferred hardware: CUDA, especially Colab NVIDIA T4; CPU fallback is mandatory.
 - Colab TPU v5e-1 is not used by this first interface. The notebook probes CUDA and chooses CPU if CUDA is unavailable.
 - Detect free VRAM at runtime. Use batch size 1, FP16 when supported, attention/VAE slicing, and CPU offload when appropriate.
-- The notebook's conservative render presets are 432x768 when GPU free memory is at least about 11 GB, 360x640 when at least 7 GB is free, otherwise 288x512. CPU uses 288x512. All are portrait and low enough to reduce VRAM pressure.
+- The notebook refreshes free VRAM before each shot. Conservative presets are 432x768 when at least about 11 GB is free, 360x640 when at least 7 GB is free, otherwise 288x512. If less than 3 GB is free, it switches to CPU. The maximum VRAM budget is never set above the measured free VRAM minus a 2 GB safety margin. CPU uses 288x512. All are portrait.
 - Final delivery is 1080x1920 at 30 fps via FFmpeg. The renderer must not attempt full-resolution 1080x1920 diffusion generation on a 16 GB T4.
 - Model weights may be downloaded once and cached under `models/` on Drive, but model license must allow local use. No paid API key is expected.
 

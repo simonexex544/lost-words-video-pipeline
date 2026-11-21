@@ -21,7 +21,7 @@ Notebook montuje Google Drive pod `/content/drive/MyDrive/lost_words_project`.
 Warstwa wizualna jest uruchamiana lokalnie w Colabie, bez płatnych inference API i bez wymaganego FAL_KEY. Notebook wykrywa CUDA, odczytuje wolną pamięć VRAM i przekazuje profil do modułu `visuals/shot_renderer.py`.
 
 - Preferowany GPU: NVIDIA T4 (16 GB VRAM według specyfikacji GPU); renderer ma używać batch size 1, FP16, attention/VAE slicing i CPU offload, gdy potrzebne.
-- Konserwatywne rozdzielczości startowe: 432×768 na GPU z odpowiednią ilością wolnej VRAM; 360×640 przy mniejszym zapasie; 288×512 na CPU.
+- Notebook odświeża wolną VRAM przed każdym ujęciem. Konserwatywne rozdzielczości: 432×768 przy co najmniej około 11 GB wolnej VRAM; 360×640 przy co najmniej 7 GB; 288×512 przy mniejszym zapasie. Poniżej 3 GB wolnej VRAM przełącza się na CPU.
 - Finalne 1080×1920 powstaje przez FFmpeg. Nie renderujemy całej generatywnej sekwencji natywnie w 1080×1920 na T4.
 - TPU v5e-1 nie jest obecnie używany: preferujemy CUDA/T4, a gdy CUDA nie jest dostępna, wybieramy CPU.
 - Model może wymagać pierwszego pobrania wag; cache modelu zapisuje się na Drive w `models/`.

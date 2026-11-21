@@ -1,119 +1,83 @@
-# Lost-words / Zgubione słowa — AI Video + Lip-Sync Pipeline
+# Lost-words / Zgubione słowa — Colab local video pipeline
 
-Polski pipeline do pionowych shortów survival / dark apocalypse / analog found footage.
-
-**Polski scenariusz dialogowy → osobne polskie głosy → realistyczny kadr FLUX → animacja Kling Image-to-Video → Sync Lipsync dla widocznych mówiących postaci → FFmpeg → MP4 1080×1920.**
+Polski pipeline do pionowych filmów 40–120 s, z celem co najmniej 60 s (domyślnie około 75 s). Historia ma mroczny klimat survival/apokalipsy, polskie dialogi i narrację, wyraźny deadline, ukryty element nieobecny w oficjalnym spisie oraz finałową konsekwencję lub zwrot.
 
 ## Otwórz w Google Colab
 
-[Uruchom lost_words_pipeline.ipynb w Google Colab](https://colab.research.google.com/github/simonexex544/lost-words-video-pipeline/blob/main/notebooks/lost_words_pipeline.ipynb)
+[Uruchom notebook w Google Colab](https://colab.research.google.com/github/simonexex544/lost-words-video-pipeline/blob/main/notebooks/lost_words_pipeline.ipynb)
 
-W Colab wybierz Środowisko wykonawcze → Uruchom wszystkie. Notebook montuje Google Drive pod /content/drive/MyDrive/lost_words_project.
+Notebook montuje Google Drive pod `/content/drive/MyDrive/lost_words_project`.
 
-## Tryby pracy i bezpieczeństwo kosztów
+## Długość i montaż
 
-W komórce 2 domyślnie jest TEST_MODE = True.
+- Akceptowany czas: 40–120 sekund.
+- Cel: minimum 60 sekund; domyślne `TARGET_SECONDS = 75`.
+- Każde ujęcie trwa 1–3 sekundy. Każda wypowiedź jest dzielona na kilka ujęć: średni plan, detal, ujęcie boczne, reakcja, plan szeroki lub reveal.
+- Każde ujęcie otrzymuje własny MP4 na Drive. Nie tworzymy jednego długiego klipu i nie symulujemy większej liczby cięć przez zmianę FPS.
+- Finalny plik: 1080×1920, 30 fps, H.264/AAC, polskie napisy DejaVu Sans.
 
-W tym trybie:
-- generowany jest polski scenariusz demonstracyjny;
-- edge-tts tworzy osobne pliki głosu dla każdej kwestii;
-- płatne zadania FLUX, Kling i Sync Lipsync są pomijane;
-- zapisywany jest raport testowy;
-- **nie powstaje MP4**, ponieważ notebook nie udaje pełnego materiału animowanego.
+## Darmowy lokalny rendering — T4, CPU fallback
 
-Pełny tryb:
-1. Dodaj FAL_KEY w Colab Secrets.
-2. Ustaw TEST_MODE = False.
-3. Opcjonalnie dodaj OPENAI_API_KEY, jeśli chcesz generować nowy scenariusz dla własnego tematu/lokacji.
-4. Uruchom wszystkie komórki.
+Warstwa wizualna jest uruchamiana lokalnie w Colabie, bez płatnych inference API i bez wymaganego FAL_KEY. Notebook wykrywa CUDA, odczytuje wolną pamięć VRAM i przekazuje profil do modułu `visuals/shot_renderer.py`.
 
-Uwaga: pełny odcinek może wysłać wiele płatnych zadań. Dla każdej kwestii powstaje obraz FLUX i klip Kling I2V; każda scena talking_character uruchamia dodatkowo Sync Lipsync. Sprawdź aktualny cennik modeli fal.ai przed uruchomieniem. Domyślny test nie wysyła tych zadań.
+- Preferowany GPU: NVIDIA T4 (16 GB VRAM według specyfikacji GPU); renderer ma używać batch size 1, FP16, attention/VAE slicing i CPU offload, gdy potrzebne.
+- Konserwatywne rozdzielczości startowe: 432×768 na GPU z odpowiednią ilością wolnej VRAM; 360×640 przy mniejszym zapasie; 288×512 na CPU.
+- Finalne 1080×1920 powstaje przez FFmpeg. Nie renderujemy całej generatywnej sekwencji natywnie w 1080×1920 na T4.
+- TPU v5e-1 nie jest obecnie używany: preferujemy CUDA/T4, a gdy CUDA nie jest dostępna, wybieramy CPU.
+- Model może wymagać pierwszego pobrania wag; cache modelu zapisuje się na Drive w `models/`.
 
-## Używane modele i API
+Ważne: Google Colab opisuje zasoby jako zmienne i niegwarantowane. Dostępność GPU, limity i długość sesji mogą się zmieniać. Notebook zapisuje checkpoint po każdym ujęciu, aby po ponownym uruchomieniu wznowić pracę bez ponownego renderowania gotowych plików. To nie oznacza gwarancji dostępności bezpłatnego GPU przez całą noc ani dokładnie 20–30 minut pracy.
 
-| Etap | Endpoint | Funkcja |
-|---|---|---|
-| Obraz startowy | fal-ai/flux/dev | realistyczny obraz pionowy |
-| Ruch obrazu | fal-ai/kling-video/v3/standard/image-to-video | Image-to-Video, ruch postaci i kamery |
-| Synchronizacja ust | fal-ai/sync-lipsync/v2 | dopasowanie ust do osobnego audio |
-| Kolejka | fal Queue API | submit, status polling, result, retry |
+## Tryb testowy i pełny render
 
-Oficjalna dokumentacja:
-- [FLUX.1 Dev API](https://fal.ai/models/fal-ai/flux/dev/api)
-- [Kling Video 3 Standard Image-to-Video](https://fal.ai/models/fal-ai/kling-video/v3/standard/image-to-video/api)
-- [Sync Lipsync 2](https://fal.ai/models/fal-ai/sync-lipsync/v2/api)
-- [fal Queue submit](https://fal.ai/docs/api-reference/inference-api/queue/submit-path)
-- [fal Queue status](https://fal.ai/docs/api-reference/inference-api/queue/status)
-- [fal Python SDK / uploads](https://fal-ai.github.io/fal/client/fal_client.html)
+W komórce 2 domyślnie ustawiono `TEST_MODE = True`. Ten tryb generuje scenariusz, Edge TTS, fragmenty audio i manifest ujęć, ale nie uruchamia modelu wizualnego i nie tworzy MP4.
 
-## Wymagane i opcjonalne Colab Secrets
+Aby uruchomić lokalny renderer:
+1. Upewnij się, że `visuals/shot_renderer.py` został dodany do głównej gałęzi repo zgodnie z [kontraktem renderera](docs/visual_renderer_contract.md).
+2. Ustaw `TEST_MODE = False`.
+3. Uruchom komórki w kolejności.
+4. Zapisz wyświetlony `EPISODE_ID`. Po przerwaniu sesji wpisz ten sam identyfikator w `EPISODE_ID_OVERRIDE`; `RESUME_RENDERING = True` pominie prawidłowe checkpointy.
 
-| Secret | Wymagany? | Zastosowanie |
-|---|---|---|
-| FAL_KEY | wymagany dla TEST_MODE=False | FLUX, Kling I2V, Sync Lipsync i przesyłanie plików |
-| OPENAI_API_KEY | opcjonalny | dynamiczny scenariusz przez OpenAI-compatible API |
-| OPENAI_BASE_URL | opcjonalny | domyślnie https://api.openai.com/v1 |
-| OPENAI_CHAT_MODEL | opcjonalny | domyślnie gpt-4o-mini |
-| FAL_WEBHOOK_URL | opcjonalny | publiczny HTTPS endpoint do powiadomień fal; notebook nadal używa pollingu |
-| TTS_API_KEY | opcjonalny | placeholder pod własny adapter TTS; Edge TTS go nie wymaga |
+Domyślny scenariusz jest lokalny i darmowy. Opcjonalne `OPENAI_API_KEY` może być użyte do dynamicznego scenariusza, ale zewnętrzne API może naliczać opłaty. Edge TTS nie wymaga klucza.
 
-Sekrety wczytywane są najpierw z google.colab.userdata, a potem z os.environ. Nigdy nie wpisuj kluczy w kodzie ani do repozytorium.
+## Kontrakt renderer ↔ notebook
 
-fal.ai przechowuje przesłane pliki i wyniki na swoim CDN zgodnie z ustawieniami retencji konta i usługi. Nie przesyłaj prywatnych nagrań, wizerunków ani materiałów, do których nie masz praw lub zgody.
+Claude rozwija wyłącznie `visuals/shot_renderer.py`; notebook nie zna wnętrza modelu. Wejściem jest jeden słownik `shot` i `runtime`, wywołanie:
 
-## Scenariusz i struktura kwestii
+```python
+render_shot(shot: dict, runtime: dict) -> dict
+```
 
-Tytuły, hook, dialogi i napisy są po polsku. Prompty obrazów są po angielsku. Każda kwestia zawiera:
+Wejście zawiera m.in. `shot_id`, `scene_id`, `duration_sec` (1–3), `visual_prompt_en`, `motion_prompt_en`, `audio_clip_path`, `output_path`, `frame_path`, `checkpoint_path`, `render_width` i `render_height`. Wyjściem jest wynik zawierający `status="completed"`, `video_path`, `duration_sec`, `width`, `height`, `fps`, `backend`, `device` i opcjonalne `lipsync_applied`.
 
-- scene_id
-- speaker: narrator, ocalaly_1, ocalaly_2, glos_z_radia lub nieznany
-- voice_role: calm_dark, tense_male, calm_female, radio_distorted lub unknown
-- text
-- visual_prompt
-- shot_type: talking_character albo environment
-- character_id i character_description
-- motion_prompt: konkretna, ciągła akcja postaci albo ruch otoczenia; dla scen z bohaterem sam ruch kamery nie wystarcza
+Szczegółowa specyfikacja: [docs/visual_renderer_contract.md](docs/visual_renderer_contract.md).
 
-Każdy odcinek powinien zawierać kogoś/coś, czego nie powinno być w danej lokacji, oraz ukryte miejsce, obiekt albo zapis, którego nie ma w żadnym wykazie. Domyślny przykład to wagon, którego nie ma w rozkładzie.
+## Właściciele sekcji — bez kolizji
 
-## Krótkie ujęcia i szybszy montaż
+| Obszar | Właściciel |
+|---|---|
+| Notebook: komórki 1–5 i 7 | ChatGPT — Drive, runtime, config, scenariusz, TTS, manifest, montaż i walidacja |
+| Notebook: komórka 6 | ChatGPT — stabilny adapter i kontrola sprzętu/checkpointów |
+| `visuals/shot_renderer.py` | Claude — lokalny model, animacja, oszczędzanie VRAM, zapis jednego klipu na ujęcie |
+| `docs/visual_renderer_contract.md` | Wspólny kontrakt; zmiany interfejsu tylko po uzgodnieniu |
 
-Notebook używa Kling V3 `multi_prompt`, aby jedna wypowiedź składała się z kilku osobnych cięć, zamiast jednego długiego kadru. Domyślnie `SHOT_DURATION_TARGET = 2`, a `MAX_SHOTS_PER_SEGMENT = 6`. Przykładowo siedmiosekundowa kwestia jest dzielona na ujęcia `[2, 2, 2, 1]`. Głos i napisy pozostają ciągłe przez cięcia. Tryb testowy pokazuje planowaną liczbę ujęć, ale nie wysyła płatnych zadań.
+Nie edytujcie równocześnie tych samych sekcji notebooka. Zalecane są osobne gałęzie i PR-y. Claude commituję tylko `visuals/shot_renderer.py` oraz jego prywatne pliki modułu; ChatGPT commituję notebook/README/requirements. Merge PR-ów, sprawdzenie diffów i walidacja JSON notebooka przed użyciem.
 
-## Ruch postaci i animacja
+## Google Drive — struktura
 
-Każda scena z widoczną mówiącą postacią zawiera opis fizycznej akcji w języku angielskim: bohater może rozkładać mapę, wskazywać trasę, wstać, zrobić krok, odwrócić się, sięgnąć po przedmiot lub zareagować na zdarzenie. Kadr ma pokazywać ruch głowy, ramion i rąk, ale nie może zasłaniać twarzy potrzebnej do lip-sync. Instrukcja Klinga wyraźnie zabrania zamiany animacji na sam ruch kamery lub nieruchomy portret. Wynik generacji nadal może różnić się między próbami — obejrzyj klipy przed pełnym montażem.
+Wszystkie pliki są w `/content/drive/MyDrive/lost_words_project/`:
 
-## Głosy i montaż
-
-Edge TTS tworzy osobne pliki audio dla kwestii. Profile wykorzystują polskie głosy Marek, Zofia i Agnieszka, z umiarkowanymi zmianami tempa i wysokości tonu. Głos z radia i nieznany otrzymują filtr pasmowy, kompresję oraz delikatny szum.
-
-Sceny talking_character mają osobny motion_prompt opisujący fizyczną akcję bohatera (np. rozłożenie mapy, wskazanie miejsca, krok do przodu, obrót, reakcję i gest). Kling ma animować zmianę pozycji ciała i ruch rąk/głowy — sam ruch kamery nie wystarcza. Każde cięcie ma osobny plan kadru: średni plan, detal, ujęcie boczne albo reakcję. Dopiero potem Sync Lipsync dopasowuje polską kwestię do widocznej twarzy i ust. Sceny environment mają własne instrukcje ruchu otoczenia (np. przesuwające się drzwi, mgła, papier, światła), bez udawania ruchu postaci. Notebook nie wstawia geometrycznych plansz jako substytutu animacji.
-
-Końcowy montaż:
-- 9:16, 1080×1920, 30 fps;
-- H.264 video i AAC audio;
-- naturalne pauzy między kwestiami;
-- cichy syntetyczny ambient pod dialogiem;
-- polskie napisy z DejaVu Sans i bezpiecznym marginesem;
-- ffprobe sprawdza obecność strumieni video/audio, rozdzielczość, kodeki i długość;
-- FFmpeg volumedetect sprawdza, czy audio nie jest cyfrową ciszą.
-
-## Pliki na Google Drive
-
-- MP4: MyDrive/lost_words_project/output/
-- Scenariusze i manifesty: MyDrive/lost_words_project/assets/
-- Audio kwestii: MyDrive/lost_words_project/audio/
-- Obrazy startowe: MyDrive/lost_words_project/frames/
-- Klipy I2V/lip-sync: MyDrive/lost_words_project/video/
-- Pliki tymczasowe: MyDrive/lost_words_project/temp/
+- `assets/<episode_id>_story.json` — scenariusz.
+- `assets/<episode_id>_shot_manifest.json` — kolejność i parametry wszystkich ujęć.
+- `assets/<episode_id>_visual_manifest.json` — wyniki renderera.
+- `audio/<episode_id>/<scene_id>.wav` — pełny głos sceny.
+- `audio/<episode_id>/shots/<shot_id>.wav` — fragment audio dla konkretnego ujęcia.
+- `frames/<episode_id>/shots/<shot_id>.png` — opcjonalna klatka referencyjna.
+- `visuals/<episode_id>/shots/<shot_id>.mp4` — osobny krótki klip.
+- `checkpoints/<episode_id>/<shot_id>.json` — checkpoint po każdym gotowym klipie.
+- `models/` — lokalny cache wag.
+- `output/<episode_id>.mp4` — finalny film.
 
 ## Debugowanie
 
-Przy błędzie wklej numer komórki, pełny traceback od Traceback (most recent call last): do końca oraz komunikaty [INFO], [QUEUE], [OSTRZEŻENIE] i [BŁĄD]. Usuń klucze API, nagłówki Authorization i prywatne URL-e; zastąp je [UKRYTO].
-
-Webhook jest opcjonalny. Colab nie uruchamia serwera webhook, dlatego notebook zawsze monitoruje kolejkę przez status polling. Jeśli podasz FAL_WEBHOOK_URL, fal dodatkowo wyśle powiadomienie na ten publiczny HTTPS adres.
-
-## Uwaga o scenariuszu demo
-
-Bez OPENAI_API_KEY albo w TEST_MODE używany jest demonstracyjny scenariusz o pociągu. Aby zmienić temat i otrzymać nowy scenariusz automatycznie, skonfiguruj OPENAI_API_KEY i wyłącz TEST_MODE. Własny adapter TTS można dodać w funkcji create_external_tts_segment w komórce TTS.
+Wklej numer komórki i pełny traceback. Usuń klucze API, nagłówki Authorization i prywatne URL-e. Nie wysyłaj sekretów ani prywatnych nagrań do repozytorium.

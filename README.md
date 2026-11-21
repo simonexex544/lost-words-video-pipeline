@@ -72,14 +72,19 @@ Tytuły, hook, dialogi i napisy są po polsku. Prompty obrazów są po angielsku
 - visual_prompt
 - shot_type: talking_character albo environment
 - character_id i character_description
+- motion_prompt: konkretna, ciągła akcja postaci albo ruch otoczenia; dla scen z bohaterem sam ruch kamery nie wystarcza
 
 Każdy odcinek powinien zawierać kogoś/coś, czego nie powinno być w danej lokacji, oraz ukryte miejsce, obiekt albo zapis, którego nie ma w żadnym wykazie. Domyślny przykład to wagon, którego nie ma w rozkładzie.
+
+## Ruch postaci i animacja
+
+Każda scena z widoczną mówiącą postacią zawiera opis fizycznej akcji w języku angielskim: bohater może rozkładać mapę, wskazywać trasę, wstać, zrobić krok, odwrócić się, sięgnąć po przedmiot lub zareagować na zdarzenie. Kadr ma pokazywać ruch głowy, ramion i rąk, ale nie może zasłaniać twarzy potrzebnej do lip-sync. Instrukcja Klinga wyraźnie zabrania zamiany animacji na sam ruch kamery lub nieruchomy portret. Wynik generacji nadal może różnić się między próbami — obejrzyj klipy przed pełnym montażem.
 
 ## Głosy i montaż
 
 Edge TTS tworzy osobne pliki audio dla kwestii. Profile wykorzystują polskie głosy Marek, Zofia i Agnieszka, z umiarkowanymi zmianami tempa i wysokości tonu. Głos z radia i nieznany otrzymują filtr pasmowy, kompresję oraz delikatny szum.
 
-Sceny talking_character są animowane przez Kling, a następnie synchronizowane z odpowiednim plikiem audio przez Sync Lipsync. Sceny environment korzystają z samego klipu Kling, bez synchronizacji ust. Notebook nie wstawia geometrycznych plansz jako substytutu animacji.
+Sceny talking_character mają osobny motion_prompt opisujący fizyczną akcję bohatera (np. rozłożenie mapy, wskazanie miejsca, krok do przodu, obrót, reakcję i gest). Kling ma animować zmianę pozycji ciała i ruch rąk/głowy — sam ruch kamery nie wystarcza. Dopiero potem Sync Lipsync dopasowuje polską kwestię do widocznej twarzy i ust. Sceny environment mają własne instrukcje ruchu otoczenia (np. przesuwające się drzwi, mgła, papier, światła), bez udawania ruchu postaci. Notebook nie wstawia geometrycznych plansz jako substytutu animacji.
 
 Końcowy montaż:
 - 9:16, 1080×1920, 30 fps;

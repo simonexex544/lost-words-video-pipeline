@@ -1,68 +1,71 @@
 # Visual renderer contract — Lost-words
 
-This file is the interface agreement between the Colab/story/TTS/montage owner and the visual-animation owner.
+This is the stable interface between the Colab notebook owner and the visual animation owner.
 
-## Ownership
+## Ownership and no-overwrite rules
 
-- Colab runtime, Google Drive layout, episode settings, Polish story JSON, Edge TTS, subtitle generation, final FFmpeg mux and ffprobe validation: notebook cells 1–4 and 7.
-- Shot manifest builder + stable renderer handoff: notebook cell 5.
-- Visual model implementation and per-shot animation worker: `visuals/shot_renderer.py`, imported by notebook cell 6. The visual owner may edit cell 6 only when the integration shape changes; do not edit cells 1–5 or 7 without coordination.
-- Do not force-push, reset, or rewrite commits from the other owner's branch.
+- Notebook cells 1–5 and 7 are maintained by the Colab/story/TTS/montage owner.
+- Notebook cell 6 is the stable adapter: hardware detection, VRAM policy, resume, output validation and checkpoints. Do not edit it for model implementation changes.
+- Claude owns `visuals/shot_renderer.py` and any helper files in `visuals/`. Claude must not rewrite the notebook or modify cells 1–5 or 7.
+- This document defines the shared API. Any signature/schema changes must be agreed before editing both sides.
+- Use separate branches and PRs; never force-push or rewrite another collaborator's commits.
 
-## Compute policy
+## Runtime goals and compute policy
 
+- Accepted episode duration: 40–120 seconds. Target at least 60 seconds; notebook default target is 75 seconds.
+- Each visual cut is a separate 1–3 second clip. Notebook writes the clip to Drive immediately after success.
 - Local inference only. Do not call paid hosted inference APIs.
-- Preferred device: CUDA GPU, especially Colab NVIDIA T4. CPU is the fallback.
-- Colab TPU v5e-1 is not selected by this contract; the notebook probes CUDA first, then falls back to CPU if CUDA is unavailable.
-- Read the current free VRAM at the start of each shot. Default T4 policy: batch size 1, FP16 where supported, attention/ VAE slicing, CPU offload when useful, release model/cache between shots if needed.
-- Suggested starting render resolutions are 432x768 for a T4 (conservative) and 288x512 for CPU. Both are portrait 9:16. Renderer may lower the resolution on CUDA out-of-memory, but must not exceed the runtime-provided pixel/VRAM budget.
-- Final delivery is always upscaled/cropped by FFmpeg to 1080x1920, 30 fps. Do not attempt to render every diffusion frame natively at 1080x1920 on a 16 GB T4.
-- Model weights may be downloaded on first use if their license allows local use; cache them on Drive under `models/`. No API keys or paid job submissions.
+- Preferred hardware: CUDA, especially Colab NVIDIA T4; CPU fallback is mandatory.
+- Colab TPU v5e-1 is not used by this first interface. The notebook probes CUDA and chooses CPU if CUDA is unavailable.
+- Detect free VRAM at runtime. Use batch size 1, FP16 when supported, attention/VAE slicing, and CPU offload when appropriate.
+- The notebook's conservative render presets are 432x768 when GPU free memory is at least about 11 GB, 360x640 when at least 7 GB is free, otherwise 288x512. CPU uses 288x512. All are portrait and low enough to reduce VRAM pressure.
+- Final delivery is 1080x1920 at 30 fps via FFmpeg. The renderer must not attempt full-resolution 1080x1920 diffusion generation on a 16 GB T4.
+- Model weights may be downloaded once and cached under `models/` on Drive, but model license must allow local use. No paid API key is expected.
 
 ## Input: one shot dictionary
 
-Notebook cell 5 writes `assets/<episode_id>_shot_manifest.json` and passes one dictionary at a time to:
+Notebook cell 5 writes `assets/<episode_id>_shot_manifest.json` and calls the renderer sequentially with:
 
 ```python
 render_shot(shot: dict, runtime: dict) -> dict
 ```
 
-Required input fields:
+Required `shot` fields:
 
 | Field | Type | Meaning |
 |---|---|---|
 | schema_version | string | `1.0` |
-| episode_id | string | episode folder key |
-| shot_id | string | unique stable ID, e.g. `S03_SH02` |
-| scene_id | string | originating dialogue scene, e.g. `S03` |
-| order | integer | global shot order, starting at 0 |
-| timeline_start_sec | number | absolute start in the final video |
-| duration_sec | number | strictly between 1 and 3 seconds (inclusive) |
+| episode_id | string | episode ID |
+| shot_id | string | unique ID, e.g. `S03_SH02` |
+| scene_id | string | source dialogue segment |
+| order | integer | global order from zero |
+| timeline_start_sec | number | start in final episode |
+| duration_sec | number | 1–3 seconds |
+| shot_index | integer | index within dialogue scene |
+| shot_count_in_scene | integer | number of cuts for this scene |
 | shot_type | string | `talking_character` or `environment` |
-| shot_kind | string | `medium_action`, `insert_detail`, `side_follow`, `reaction`, `wide`, `tracking`, `reveal` |
-| visual_prompt_en | string | English visual description; no on-screen text |
-| motion_prompt_en | string | English physical action / environmental movement |
-| speaker | string | speaker role from story |
-| voice_role | string | Polish TTS profile |
-| character_id | string | stable identity key, or `none` |
-| character_description_en | string | stable character description |
-| audio_path | string | full Polish WAV path for this scene |
-| audio_offset_sec | number | offset into audio_path for this cut |
-| audio_duration_sec | number | same as duration_sec, clipped to available speech |
-| frame_path | string | Drive PNG path for optional start/reference frame |
-| output_path | string | Drive MP4 path, one file per shot |
-| checkpoint_path | string | Drive JSON checkpoint path for this shot |
-| render_width | integer | runtime-selected source width |
-| render_height | integer | runtime-selected source height |
-| output_width | integer | always 1080 |
-| output_height | integer | always 1920 |
-| output_fps | integer | always 30 |
+| shot_kind | string | framing/action kind such as `medium_action`, `insert_detail`, `side_follow`, `reaction`, `wide`, `tracking`, `reveal` |
+| visual_prompt_en | string | English visual prompt, no text on image |
+| motion_prompt_en | string | English action/movement prompt |
+| speaker / voice_role | string | speaker and Polish TTS profile |
+| character_id | string | stable identity ID, or `none` |
+| character_description_en | string | English visual identity description |
+| audio_path | string | full Polish WAV for this scene |
+| audio_offset_sec | number | local offset in that WAV |
+| audio_duration_sec | number | duration of the cut |
+| audio_clip_path | string | pre-cut WAV for this shot |
+| frame_path | string | optional starting/reference PNG on Drive |
+| output_path | string | required MP4 output path on Drive |
+| checkpoint_path | string | required per-shot JSON checkpoint path |
+| render_width / render_height | integer | source resolution chosen based on free VRAM |
+| output_width / output_height | integer | 1080×1920 |
+| output_fps | integer | 30 |
 
-The renderer receives two dictionaries:
-- `shot`: exactly the per-shot fields above.
-- `runtime`: device, free/total VRAM, render resolution, dtype, batch size, offload/slicing switches, model cache path, and a cancel/resume-safe checkpoint directory.
+The `runtime` dictionary contains `device`, `device_name`, `cuda_available`, free/total VRAM, render resolution, dtype, batch size, max VRAM budget, CPU offload, attention/VAE slicing, decode chunk size, Drive model-cache path, checkpoint path, and `allow_paid_apis=False`.
 
 ## Output: renderer result dictionary
+
+Return a dictionary only after the video file is complete:
 
 ```python
 {
@@ -81,37 +84,39 @@ The renderer receives two dictionaries:
 }
 ```
 
-The worker must return `status="completed"` only after the MP4 exists, is non-empty and can be probed. The clip is silent; notebook cell 7 lays the original Polish dialogue WAV continuously over the sequence of cuts. For dialogue shots, keep the speaking face visible in `medium_action` and `reaction` shots. If a local lip-sync method is implemented, it is optional and must not require a paid service.
+Requirements:
+- Write one silent MP4 per shot at `output_path`, and optional PNG at `frame_path`.
+- Duration must be 1–3 seconds and portrait 9:16 (source resolution can be lower than final).
+- For `talking_character`, character itself must visibly move; camera motion alone is insufficient. Keep the face/mouth visible for `medium_action` and `reaction` shots.
+- `audio_clip_path` is provided for optional local lip-sync; lip-sync must not require a paid service. Notebook will overlay the original uninterrupted dialogue WAV during final montage.
+- Return `status="completed"` only after the MP4 exists, is non-empty and probes successfully.
+- Save model/cache state under Drive `models/`; never use `/content` as the only storage location for completed shots.
 
 ## Google Drive layout
 
 All paths are under `/content/drive/MyDrive/lost_words_project/`:
 
 - `assets/<episode_id>_story.json` — normalized Polish story.
-- `assets/<episode_id>_shot_manifest.json` — authoritative ordered input to the renderer.
-- `assets/<episode_id>_visual_manifest.json` — results returned by renderer.
-- `audio/<episode_id>/<scene_id>.wav` — full scene voice track.
-- `frames/<episode_id>/shots/<shot_id>.png` — optional still/reference image per shot.
-- `visuals/<episode_id>/shots/<shot_id>.mp4` — one short silent video per shot.
+- `assets/<episode_id>_shot_manifest.json` — authoritative ordered input manifest.
+- `assets/<episode_id>_visual_manifest.json` — renderer result list.
+- `audio/<episode_id>/<scene_id>.wav` — full Polish voice track.
+- `audio/<episode_id>/shots/<shot_id>.wav` — shot-level audio crop.
+- `frames/<episode_id>/shots/<shot_id>.png` — optional reference frame.
+- `visuals/<episode_id>/shots/<shot_id>.mp4` — one short silent clip per shot.
 - `checkpoints/<episode_id>/<shot_id>.json` — atomic per-shot resume state.
-- `models/...` — cached open local model weights.
-- `output/<episode_id>.mp4` — final 1080x1920 video.
-
-Write every finished shot and its checkpoint immediately to Drive. Do not keep the episode only in /content. On restart, skip shots with a valid completed checkpoint and valid MP4.
+- `models/...` — cached open model weights.
+- `output/<episode_id>.mp4` — final 1080x1920 H.264/AAC.
 
 ## Checkpoint and validation rules
 
 - Render shots sequentially, batch size 1.
-- Save each shot as soon as it completes; write checkpoint JSON atomically (temporary file then rename).
-- Validate duration (1–3 s), video stream, nonzero file size, and portrait aspect ratio before marking a shot completed.
-- A failed shot must return/raise a clear error with `shot_id`; already completed shots remain reusable.
-- Renderer may adapt source resolution after CUDA OOM and retry the same shot once at a lower tier. It must not discard previous successful outputs.
-- Never change manifest order or output paths while resuming an episode.
-- The final montage owner can always upscale all clips to 1080x1920/30 fps with FFmpeg.
+- Save each MP4 and its metadata to Drive immediately; write checkpoint JSON atomically (temporary file then rename).
+- Validate duration, video stream, nonzero file size, and portrait aspect ratio before marking completed.
+- A failed shot must raise a clear error containing `shot_id`; already completed outputs must remain reusable.
+- On CUDA OOM, retry the same shot at a lower resolution or CPU; do not discard successful outputs.
+- Never change manifest order, shot IDs, or output paths when resuming an episode.
+- Final montage code upscales clips to 1080x1920/30 fps using FFmpeg.
 
-## Git collaboration contract
+## Colab and free-resource caveat
 
-Use separate branches and never both edit the same notebook cells:
-- Colab/story/TTS/montage owner: cells 1–5 and 7, plus this contract if interface changes.
-- Visual owner: `visuals/shot_renderer.py` and notebook cell 6 only.
-- Merge via PR or cherry-pick after checking changed paths and notebook cell ownership. Do not commit simultaneous whole-notebook rewrites. If an entire `.ipynb` must be merged, compare cell source arrays by cell index and manually combine only owned cells, then validate JSON and execute lightweight cells.
+The notebook contains no paid hosted video inference calls. However, Colab's free hardware availability and session duration are not guaranteed; the notebook persists each shot so work can resume across sessions. CPU fallback may be very slow. A local model must use an OSI-compatible or otherwise permitted model license for its use case.

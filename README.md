@@ -76,6 +76,10 @@ Tytuły, hook, dialogi i napisy są po polsku. Prompty obrazów są po angielsku
 
 Każdy odcinek powinien zawierać kogoś/coś, czego nie powinno być w danej lokacji, oraz ukryte miejsce, obiekt albo zapis, którego nie ma w żadnym wykazie. Domyślny przykład to wagon, którego nie ma w rozkładzie.
 
+## Krótkie ujęcia i szybszy montaż
+
+Notebook używa Kling V3 `multi_prompt`, aby jedna wypowiedź składała się z kilku osobnych cięć, zamiast jednego długiego kadru. Domyślnie `SHOT_DURATION_TARGET = 2`, a `MAX_SHOTS_PER_SEGMENT = 6`. Przykładowo siedmiosekundowa kwestia jest dzielona na ujęcia `[2, 2, 2, 1]`. Głos i napisy pozostają ciągłe przez cięcia. Tryb testowy pokazuje planowaną liczbę ujęć, ale nie wysyła płatnych zadań.
+
 ## Ruch postaci i animacja
 
 Każda scena z widoczną mówiącą postacią zawiera opis fizycznej akcji w języku angielskim: bohater może rozkładać mapę, wskazywać trasę, wstać, zrobić krok, odwrócić się, sięgnąć po przedmiot lub zareagować na zdarzenie. Kadr ma pokazywać ruch głowy, ramion i rąk, ale nie może zasłaniać twarzy potrzebnej do lip-sync. Instrukcja Klinga wyraźnie zabrania zamiany animacji na sam ruch kamery lub nieruchomy portret. Wynik generacji nadal może różnić się między próbami — obejrzyj klipy przed pełnym montażem.
@@ -84,7 +88,7 @@ Każda scena z widoczną mówiącą postacią zawiera opis fizycznej akcji w ję
 
 Edge TTS tworzy osobne pliki audio dla kwestii. Profile wykorzystują polskie głosy Marek, Zofia i Agnieszka, z umiarkowanymi zmianami tempa i wysokości tonu. Głos z radia i nieznany otrzymują filtr pasmowy, kompresję oraz delikatny szum.
 
-Sceny talking_character mają osobny motion_prompt opisujący fizyczną akcję bohatera (np. rozłożenie mapy, wskazanie miejsca, krok do przodu, obrót, reakcję i gest). Kling ma animować zmianę pozycji ciała i ruch rąk/głowy — sam ruch kamery nie wystarcza. Dopiero potem Sync Lipsync dopasowuje polską kwestię do widocznej twarzy i ust. Sceny environment mają własne instrukcje ruchu otoczenia (np. przesuwające się drzwi, mgła, papier, światła), bez udawania ruchu postaci. Notebook nie wstawia geometrycznych plansz jako substytutu animacji.
+Sceny talking_character mają osobny motion_prompt opisujący fizyczną akcję bohatera (np. rozłożenie mapy, wskazanie miejsca, krok do przodu, obrót, reakcję i gest). Kling ma animować zmianę pozycji ciała i ruch rąk/głowy — sam ruch kamery nie wystarcza. Każde cięcie ma osobny plan kadru: średni plan, detal, ujęcie boczne albo reakcję. Dopiero potem Sync Lipsync dopasowuje polską kwestię do widocznej twarzy i ust. Sceny environment mają własne instrukcje ruchu otoczenia (np. przesuwające się drzwi, mgła, papier, światła), bez udawania ruchu postaci. Notebook nie wstawia geometrycznych plansz jako substytutu animacji.
 
 Końcowy montaż:
 - 9:16, 1080×1920, 30 fps;

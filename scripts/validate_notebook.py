@@ -70,7 +70,7 @@ def main() -> None:
     if "fal-client" in requirements:
         fail("requirements-colab.txt still depends on fal-client.")
 
-    config = sources[1]
+    config = sources[2]
     if not all(token in config for token in (
         "MIN_VIDEO_SECONDS = 40",
         "GOAL_VIDEO_SECONDS = 60",

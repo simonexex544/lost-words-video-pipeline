@@ -1,0 +1,22 @@
+name: Validate Colab notebook
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - codex/colab-drive-runtime-contract
+
+jobs:
+  notebook-static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate notebook structure and Python syntax
+        run: python scripts/validate_notebook.py

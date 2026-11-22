@@ -85,6 +85,10 @@ def main() -> None:
     )):
         fail("Episode duration or shot duration settings do not match the contract.")
 
+    fallback = sources[3].split("def fallback_story():", 1)[1].split("def generate_story_openai():", 1)[0]
+    if fallback.count("        ('") != 12:
+        fail("Fallback story must contain exactly 12 scenes.")
+
     contract = CONTRACT.read_text(encoding="utf-8")
     readme = README.read_text(encoding="utf-8")
     if "render_shot(shot: dict, runtime: dict) -> dict" not in contract:

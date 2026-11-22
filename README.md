@@ -1,6 +1,6 @@
 # Lost-words / Zgubione słowa — Colab local video pipeline
 
-Polski pipeline do pionowych filmów 40–120 s, z celem co najmniej 60 s (domyślnie około 75 s). Historia ma mroczny klimat survival/apokalipsy, polskie dialogi i narrację, wyraźny deadline, ukryty element nieobecny w oficjalnym spisie oraz finałową konsekwencję lub zwrot.
+Polski pipeline do pionowych filmów 60–120 s, z celem co najmniej 60 s (domyślnie około 75 s). Historia ma mroczny klimat survival/apokalipsy, polskie dialogi i narrację, wyraźny deadline, ukryty element nieobecny w oficjalnym spisie oraz finałową konsekwencję lub zwrot.
 
 ## Otwórz w Google Colab
 
@@ -10,7 +10,8 @@ Notebook montuje Google Drive pod `/content/drive/MyDrive/lost_words_project`.
 
 ## Długość i montaż
 
-- Akceptowany czas: 40–120 sekund.
+- Fallback zawiera 12 rozbudowanych scen dialogowo-narracyjnych oraz krótki hook; walidacja wymaga co najmniej 180 wypowiadanych słów.
+- Akceptowany czas: 60–120 sekund.
 - Cel: minimum 60 sekund; domyślne `TARGET_SECONDS = 75`.
 - Każde ujęcie trwa 1–3 sekundy. Każda wypowiedź jest dzielona na kilka ujęć: średni plan, detal, ujęcie boczne, reakcja, plan szeroki lub reveal.
 - Każde ujęcie otrzymuje własny MP4 na Drive. Nie tworzymy jednego długiego klipu i nie symulujemy większej liczby cięć przez zmianę FPS.

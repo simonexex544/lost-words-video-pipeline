@@ -4,7 +4,7 @@ Polski pipeline do pionowych filmów 60–120 s, z celem co najmniej 60 s (domy�
 
 ## Otwórz w Google Colab
 
-[Uruchom notebook w Google Colab](https://colab.research.google.com/github/simonexex544/lost-words-video-pipeline/blob/main/notebooks/lost_words_pipeline.ipynb)
+[Uruchom notebook w Google Colab](https://colab.research.google.com/github/simonexex544/lost-words-video-pipeline/blob/codex/colab-drive-runtime-contract/notebooks/lost_words_pipeline.ipynb)
 
 Notebook montuje Google Drive pod `/content/drive/MyDrive/lost_words_project`.
 

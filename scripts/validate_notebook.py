@@ -51,6 +51,9 @@ def main() -> None:
     required_tokens = {
         "Google Drive mount": "drive.mount('/content/drive'",
         "Edge TTS retry": "max_attempts = 3",
+        "Safe Edge TTS normalization": "normalize_edge_tts_adjustment",
+        "Final audio stream validation": "audio_stream.get('sample_rate', 0)",
+        "Silent renderer clips": "renderer ma zwracać cichy MP4",
         "Per-shot manifest": "SHOT_PLAN_PATH",
         "T4 VRAM inspection": "torch.cuda.mem_get_info",
         "CPU fallback": "CPU fallback after CUDA OOM",
@@ -72,8 +75,10 @@ def main() -> None:
 
     config = sources[2]
     if not all(token in config for token in (
-        "MIN_VIDEO_SECONDS = 40",
+        "NUM_SCENES = 12",
+        "MIN_VIDEO_SECONDS = 60",
         "GOAL_VIDEO_SECONDS = 60",
+        "MIN_SCRIPT_WORDS = 180",
         "MAX_VIDEO_SECONDS = 120",
         "SHOT_DURATION_MIN = 1.0",
         "SHOT_DURATION_MAX = 3.0",

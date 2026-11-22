@@ -89,6 +89,12 @@ def main() -> None:
     if fallback.count("        ('") != 12:
         fail("Fallback story must contain exactly 12 scenes.")
 
+    montage = sources[7]
+    audio_concat_position = montage.find("str(dialogue_audio)")
+    master_probe_position = montage.find("dialogue_probe = probe_media(dialogue_audio)")
+    if audio_concat_position < 0 or master_probe_position < 0 or master_probe_position < audio_concat_position:
+        fail("Master WAV ffprobe validation must run after the concat command creates the WAV.")
+
     contract = CONTRACT.read_text(encoding="utf-8")
     readme = README.read_text(encoding="utf-8")
     if "render_shot(shot: dict, runtime: dict) -> dict" not in contract:

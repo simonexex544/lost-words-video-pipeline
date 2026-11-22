@@ -12,7 +12,7 @@ This is the stable interface between the Colab notebook owner and the visual ani
 
 ## Runtime goals and compute policy
 
-- Accepted episode duration: 40–120 seconds. Target at least 60 seconds; notebook default target is 75 seconds.
+- Accepted episode duration: 60–120 seconds. The hard audio/video minimum is 60 seconds; notebook default target is 75 seconds. The offline fallback contains 12 Polish scenes plus a short hook.
 - Each visual cut is a separate 1–3 second clip. Notebook writes the clip to Drive immediately after success.
 - Local inference only. Do not call paid hosted inference APIs.
 - Preferred hardware: CUDA, especially Colab NVIDIA T4; CPU fallback is mandatory.
